@@ -1,0 +1,7 @@
+elasticsearch:
+  hosts:
+    elk_stack: 
+      elk_stack: <ENTER_IP_HERE>
+      ansible_user: user
+      ansible_sudo_pass: password
+      ansible_port: 22

@@ -1,0 +1,39 @@
+---
+- name: Remove apt lock file
+  become: true
+  file:
+    state: absent
+    path: "/var/lib/dpkg/lock-frontend"
+  ignore_errors: true
+  
+- name: apt update
+  become: true
+  apt:
+    update_cache: yes
+    autoclean: yes
+    autoremove: yes
+  ignore_errors: true
+
+- name: apt dist-upgrade
+  become: true
+  apt:
+    upgrade: dist
+    autoclean: yes
+    autoremove: yes
+  ignore_errors: true
+
+- name: check reboot required
+  become: true
+  register: reboot_required
+  stat: path=/var/run/reboot-required
+
+- name: reboot
+  become: true
+  reboot:
+    msg: "Reboot initiated by ansible"
+    connect_timeout: 5
+    reboot_timeout: 300
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+    test_command: uptime
+  when: reboot_required.stat.exists

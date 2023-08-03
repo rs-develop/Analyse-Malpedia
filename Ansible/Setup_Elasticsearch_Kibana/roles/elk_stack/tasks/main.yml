@@ -1,0 +1,133 @@
+- name: install Java
+  become: true
+  apt:
+    name: openjdk-8-jdk
+    state: present
+
+- name: install nginx
+  become: true
+  apt:
+    name: nginx
+    state: present
+
+- name: Check if elastic gpg key exists
+  become: true
+  stat:
+    path: /usr/share/keyrings/elastic.gpg
+  register: gpg
+
+- name: import elastic pgp key if the key not exists
+  become: true
+  shell: 'curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elastic.gpg'
+  when: gpg.stat.exists == False
+
+- name: Check if elastic repository exists
+  become: true
+  stat:
+    path: /etc/apt/sources.list.d/elastic-7.x.list
+  register: elastic_repo
+
+- name: add elastic repository
+  become: true
+  shell: 'echo "deb [signed-by=/usr/share/keyrings/elastic.gpg] https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list'
+  when: elastic_repo.stat.exists == False
+
+- name: install apt-transport-https
+  become: true
+  apt:
+    name: apt-transport-https
+    state: present
+
+- name: update repository befor install elastic
+  become: true
+  apt:
+    update_cache: yes
+    autoclean: yes
+    autoremove: yes
+  ignore_errors: true
+
+- name: install elasticsearch
+  become: true
+  apt:
+    name: elasticsearch
+
+- name: copy elastic search config tamplate
+  become: true
+  template:
+    src: elasticsearch.yml.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: root
+    group: elasticsearch
+    mode: 0644
+    
+- name: copy elastic jvm config file
+  become: true
+  template:
+    src: jvm.options.j2
+    dest: /etc/elasticsearch/jvm.options
+    owner: root
+    group: elasticsearch
+    mode: 0644
+    
+- name: copy elasticsearch.service to change default service start time from 90s to 300s (elastic wont start somethimes)
+  become: true
+  template:
+    src: elasticsearch.service.j2
+    dest: /lib/systemd/system/elasticsearch.service
+    owner: root
+    group: root
+    mode: 0644
+
+- name: enable and start elasticsearch
+  become: true
+  service:
+    name: elasticsearch
+    enabled: yes
+    state: started
+
+- name: check elasticsearch service is running
+  uri:
+    url: 'http://{{ elasticsearch.ip }}:{{ elasticsearch.port }}'
+    return_content: yes
+  register: value
+  failed_when: "'You Know, for Search' not in value.content"
+
+- name: install kibana
+  become: true
+  apt:
+    name: kibana
+    state: present
+
+- name: copy kibana template
+  become: true
+  template:
+    src: kibana.yml.j2
+    dest: /etc/kibana/kibana.yml
+    owner: root
+    group: kibana
+    mode: 0664
+
+- name: enable and start kibana
+  become: true
+  service:
+    name: kibana
+    enabled: yes
+    state: started
+
+- name: allow traffic on port 5601 for kibana
+  become: true
+  ufw:
+    rule: allow
+    port: '{{ kibana.port }}'
+  ignore_errors: true
+
+
+- name: check if kibana is reachable
+  uri:
+    url: 'http://{{ elasticsearch.ip }}:{{ kibana.port }}'
+  retries: 5
+  delay: 5
+  register: result
+  until: result.status == 200 or result.status == 401
+  changed_when: false
+

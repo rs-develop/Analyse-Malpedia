@@ -1,0 +1,7 @@
+---
+- hosts: all
+  become: true
+  roles:
+    - ubuntu_common
+    - basic_tools
+    - elk_stack

@@ -1,0 +1,13 @@
+- name: Install basic tools
+  become: true
+  apt:
+    pkg:
+    - iproute2
+    - dnsutils
+    - vim
+    - htop
+    - python3-pip
+    - python3
+    - git
+    - tmux
+  ignore_errors: true

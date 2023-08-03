@@ -1,0 +1,11 @@
+elasticsearch:
+  ip: <ENTER_IP_HERE>
+  port: 9200
+  xms: -Xms512m
+  xmx: -Xmx512m
+  
+kibana:
+  port: 5601
+  
+service:
+    default_service_start_time: 300s
